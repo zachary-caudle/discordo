@@ -1,12 +1,11 @@
-package run
+package cmd
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"runtime"
 
-	"github.com/ayn2op/discordo/config"
+	"github.com/ayn2op/discordo/internal/constants"
 	"github.com/diamondburned/arikawa/v3/api"
 	"github.com/diamondburned/arikawa/v3/gateway"
 	"github.com/diamondburned/arikawa/v3/state"
@@ -15,10 +14,10 @@ import (
 )
 
 func init() {
-	api.UserAgent = fmt.Sprintf("%s/0.1 (https://github.com/diamondburned/arikawa, v3)", config.Name)
+	api.UserAgent = constants.UserAgent
 	gateway.DefaultIdentity = gateway.IdentifyProperties{
 		OS:      runtime.GOOS,
-		Browser: config.Name,
+		Browser: constants.Name,
 		Device:  "",
 	}
 }
@@ -35,6 +34,8 @@ func openState(token string) error {
 	// Handlers
 	discordState.AddHandler(discordState.onReady)
 	discordState.AddHandler(discordState.onMessageCreate)
+	discordState.AddHandler(discordState.onMessageDelete)
+
 	discordState.StateLog = discordState.onLog
 	discordState.OnRequest = append(discordState.Client.OnRequest, discordState.onRequest)
 
@@ -80,5 +81,15 @@ func (s *State) onReady(r *gateway.ReadyEvent) {
 func (s *State) onMessageCreate(m *gateway.MessageCreateEvent) {
 	if mainFlex.guildsTree.selectedChannelID.IsValid() && mainFlex.guildsTree.selectedChannelID == m.ChannelID {
 		mainFlex.messagesText.createMessage(m.Message)
+	}
+}
+
+func (s *State) onMessageDelete(m *gateway.MessageDeleteEvent) {
+	if mainFlex.guildsTree.selectedChannelID == m.ChannelID {
+		mainFlex.messagesText.selectedMessage = -1
+		mainFlex.messagesText.Highlight()
+		mainFlex.messagesText.Clear()
+
+		mainFlex.messagesText.drawMsgs(m.ChannelID)
 	}
 }
